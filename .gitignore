@@ -1,0 +1,10 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+.ipynb_checkpoints/
+
+# Downloaded rolls and CAPTCHA images; the PDFs live in GCS.
+*.pdf
+captcha/
+wrong-captcha/

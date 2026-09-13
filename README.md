@@ -1,33 +1,58 @@
-## Bihar Electoral Rolls (2020)
+## Bihar Electoral Rolls 2020
 
-### 🚫 This repository has been archived. The code was written to scrape data at a point in time.
+[![License: MIT](https://img.shields.io/badge/code-MIT-green)](LICENSE)
 
-We scraped the 2020 Bihar Electoral Rolls from http://ele.bihar.gov.in/pdfsearch/ (Publication Date: 07-02-2020). In all, there were 72,723 primary rolls from 243 constituencies.
+> **Archived.** The scripts scraped a site at one point in time and are kept as a record of how the data were produced.
 
-The file name has the following format: `FinalRoll_ACNo_<AC NO 1~243>PartNo_<PART NO>.pdf`
+Every primary electoral-roll PDF the Chief Electoral Officer, Bihar published at `http://ele.bihar.gov.in/pdfsearch/` (publication date 2020-02-07): 72,723 parts (one PDF per polling-station part) across all 243 assembly constituencies, 284 GiB in total, downloaded 2020-07-20 to 2020-08-06. This repository holds the scripts and an index of every file. The PDFs are in a Google Cloud Storage bucket, not on Dataverse; because the rolls carry personal information, access is restricted to research use. Part of the [Indian electoral rolls](https://github.com/in-rolls/electoral_rolls) collection.
 
-### Scripts
+### Data
 
-1. We used the [script](scripts/bihar.py) to download the files and upload them to Google Cloud Storage (gs://in-electoral-rolls-2020/bihar).
-  - There were a few files which we couldn't download in the first try. The script for downloading those is [here](scripts/bihar_patch.py).
-2. [Notebook](scripts/bihar_check.ipynb) to check if we downloaded all the files
-3. [Notebook](scripts/bihar_to_csv.ipynb) to check file size and produce [metadata CSV for files](metadata_and_log_files/bihar.csv)
-4. [Notebook](scripts/scrape-dry-run-getmeta.ipynb) gets the [metadata from the webpage (including names etc.)](metadata_and_log_files/metadata.csv) and appends to [the csv obtained step 3](metadata_and_log_files/bihar.csv)
+| File | Where | Rows | What |
+|---|---|---|---|
+| `FinalRoll_ACNo_<AC>PartNo_<Part>.pdf` | `gs://in-electoral-rolls-2020/bihar/` | 72,723 files | the rolls, 109 KB to 6.7 MB each (median 4.2 MB) |
+| [`metadata_and_log_files/bihar.csv`](metadata_and_log_files/bihar.csv) | this repository | 72,723 | **use this one**: one row per PDF, with constituency and polling-station names, bucket path, size, upload time |
+| [`metadata_and_log_files/metadata.csv`](metadata_and_log_files/metadata.csv) | this repository | 72,723 | the two dropdown labels per part, as read from the site; the name columns of `bihar.csv` |
+| [`metadata_and_log_files/list.txt`](metadata_and_log_files/list.txt) | this repository | 72,204 | bucket listing after the first download pass |
+| [`metadata_and_log_files/list2.txt`](metadata_and_log_files/list2.txt) | this repository | 72,723 | bucket listing after the patch pass |
+| [`metadata_and_log_files/list3.txt`](metadata_and_log_files/list3.txt) | this repository | 72,723 | `gsutil ls -al` of the final bucket, plus a total line |
 
-### Log Files and Metadata CSV
+The first pass missed 519 parts; `list2.txt` minus `list.txt` is exactly the set the patch script fetched.
 
-* [list.txt](metadata_and_log_files/list.txt) --- files that downloaded the first time.
-* [list2.txt](metadata_and_log_files/list2.txt) --- all files that downloaded after the 2nd time.
-* [list3.txt](metadata_and_log_files/list3.txt) --- all files with file size.
-* [Metadata CSV for Files along with size](metadata_and_log_files/bihar.csv)
-* [Metadata CSV with data from the webpage](metadata_and_log_files/metadata.csv)
+**Columns** of `bihar.csv`:
 
-### How Do I Get the Electoral Rolls?
+| Column | Notes |
+|---|---|
+| `ac_no` | Assembly constituency number, 1--243, parsed from the filename. |
+| `part_no` | Part number within the constituency, 1--408, parsed from the filename. `(ac_no, part_no)` is unique. |
+| `assembly_segment` | Constituency label from the site's dropdown, in Hindi, e.g. `1 - वाल्मीकिनगर`. |
+| `part_number` | Part label from the site's dropdown: number and polling-station name, e.g. `1 - उत्क्रमित मध्य विद्यालय, ठाढ़ी`. |
+| `pdf_path` | Bucket path with the GCS generation suffix, e.g. `gs://in-electoral-rolls-2020/bihar/FinalRoll_ACNo_1PartNo_1.pdf#1596200269282980`. Drop everything from `#` to get the object name. |
+| `filesize` | Bytes. |
+| `timestamp` | Upload time to the bucket, UTC. |
 
-We have instituted the same process as [here](https://github.com/in-rolls/electoral_rolls).
+`bihar.csv` was built by sorting the bucket listing by `(ac_no, part_no)` and joining `metadata.csv` to it row by row, not on a key. The join lines up: in all 72,723 rows the leading number of `assembly_segment` equals `ac_no` and the leading number of `part_number` equals `part_no`.
 
-Given privacy concerns, we are releasing the data only for research purposes. To access the pdfs, you must agree to take all precautions to maintain the privacy of Indian electors. (There is a difference between data being available in pdfs, split across different sites, sometimes behind CAPTCHA, and a common data dump.) You will get read access to Google Coldline storage bucket for a month. The buckets are setup as requester pays. So you need to create a project that will be used for billing. You can access them as follows:
+### How the data were collected
 
+1. [`scripts/scrape-dry-run-getmeta.ipynb`](scripts/scrape-dry-run-getmeta.ipynb) drives the site in headless Chrome (Selenium), walks both dropdowns and saves every constituency/part label to `metadata.csv`. This is the reference list of what should exist.
+2. [`scripts/bihar.py`](scripts/bihar.py) walks the same dropdowns, selects the primary roll, screenshots the CAPTCHA, solves it through anti-captcha, submits, and uploads each constituency's downloads to the bucket. Arguments `[constituency index] [part index]` resume a crashed run.
+3. [`scripts/bihar_check.ipynb`](scripts/bihar_check.ipynb) compares the bucket listing to the dry-run counts and prints the missing parts; [`scripts/bihar_patch.py`](scripts/bihar_patch.py) fetches exactly those.
+4. [`scripts/bihar_to_csv.ipynb`](scripts/bihar_to_csv.ipynb) parses `list3.txt` and joins the labels to produce `bihar.csv`.
+
+### Getting the PDFs
+
+Request access through the procedure described in [in-rolls/electoral_rolls](https://github.com/in-rolls/electoral_rolls#how-do-i-get-the-electoral-roll-pdfs) (a form plus IRB approval). Once granted, you get read access to the bucket for a month. The bucket is requester-pays and in the Archive storage class, so reads are billed to a Google Cloud project of yours:
+
+```bash
+gsutil -u your-billing-project ls gs://in-electoral-rolls-2020/bihar/
+gsutil -u your-billing-project cp gs://in-electoral-rolls-2020/bihar/FinalRoll_ACNo_1PartNo_1.pdf .
 ```
-gsutil -u projectname_for_billing ls gs://in-electoral-rolls-2020/bihar
-```
+
+### Citation
+
+See [CITATION.cff](CITATION.cff).
+
+### License
+
+Code is MIT. The rolls are published by the Chief Electoral Officer, Bihar; the bucket copy is restricted to research use.
