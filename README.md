@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/code-MIT-green)](LICENSE)
 
-> **Archived.** The scripts scraped a site at one point in time and are kept as a record of how the data were produced.
+> **Point-in-time scrape.** The code records how the data were collected in July--August 2020. It is not maintained and is not expected to run against today's site.
 
 Every primary electoral-roll PDF the Chief Electoral Officer, Bihar published at `http://ele.bihar.gov.in/pdfsearch/` (publication date 2020-02-07): 72,723 parts (one PDF per polling-station part) across all 243 assembly constituencies, 284 GiB in total, downloaded 2020-07-20 to 2020-08-06. This repository holds the scripts and an index of every file. The PDFs are in a Google Cloud Storage bucket, not on Dataverse; because the rolls carry personal information, access is restricted to research use. Part of the [Indian electoral rolls](https://github.com/in-rolls/electoral_rolls) collection.
 
